@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radioactive Decay Simulator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            background: linear-gradient(to bottom, #0f172a, #1e293b);
+            padding: 10px;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 8px; }
+        .header h1 { font-size: 18px; font-weight: bold; color: #fbbf24; }
+        .header p { color: #cbd5e1; font-size: 12px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .panel { background: #334155; border-radius: 8px; padding: 10px; border: 1px solid #475569; }
+        .panel h2 { font-size: 14px; font-weight: bold; margin-bottom: 8px; text-align: center; }
+        .atom-chamber { background: #1e293b; border-radius: 6px; margin-bottom: 8px; overflow: hidden; height: 280px; }
+        .atom-chamber svg { width: 100%; height: 100%; }
+        .legend { display: flex; justify-content: center; gap: 16px; margin-bottom: 8px; }
+        .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+        .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .legend-dot.blue { background: #60a5fa; }
+        .legend-dot.gold { background: #fbbf24; }
+        .controls { display: flex; gap: 6px; }
+        button { flex: 1; padding: 8px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px; }
+        .btn-start { background: #2563eb; color: white; }
+        .btn-start:hover { background: #3b82f6; }
+        .btn-decay { background: #d97706; color: white; }
+        .btn-decay:hover { background: #f59e0b; }
+        .btn-decay:disabled { background: #475569; cursor: not-allowed; }
+        .btn-reset { background: #475569; color: white; }
+        .btn-reset:hover { background: #64748b; }
+        .hidden { display: none; }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 8px; }
+        .stat-box { background: #1e293b; border-radius: 4px; padding: 6px; text-align: center; }
+        .stat-value { font-size: 16px; font-weight: bold; }
+        .stat-value.amber { color: #fbbf24; }
+        .stat-value.blue { color: #60a5fa; }
+        .stat-value.green { color: #4ade80; }
+        .stat-label { font-size: 9px; color: #94a3b8; }
+        .table-wrapper { overflow-y: auto; max-height: 380px; }
+        table { width: 100%; font-size: 11px; border-collapse: collapse; }
+        thead tr { background: #1e293b; position: sticky; top: 0; }
+        th, td { padding: 4px 6px; }
+        th { text-align: center; }
+        th:first-child { text-align: left; }
+        td { text-align: center; }
+        td:first-child { text-align: left; }
+        tbody tr:nth-child(odd) { background: rgba(30, 41, 59, 0.5); }
+        .td-blue { color: #60a5fa; }
+        .td-gold { color: #fbbf24; }
+        .td-green { color: #4ade80; }
+        circle { transition: fill 0.5s ease; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>☢️ Radioactive Decay Simulator</h1>
+            <p>Observe how radioactive atoms decay over time</p>
+        </div>
+        <div class="grid">
+            <div class="panel">
+                <h2>Atom Chamber</h2>
+                <div class="atom-chamber">
+                    <svg id="atomChamber" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                        <text x="50" y="50" text-anchor="middle" fill="#64748b" font-size="6">Click "Start" to add atoms</text>
+                    </svg>
+                </div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-dot blue"></div>
+                        <span>Parent: <span id="parentCount">0</span></span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot gold"></div>
+                        <span>Daughter: <span id="daughterCount">0</span></span>
+                    </div>
+                </div>
+                <div class="controls">
+                    <button id="startBtn" class="btn-start" onclick="initializeAtoms()">🚀 Start with 200 Atoms</button>
+                    <button id="decayBtn" class="btn-decay hidden" onclick="simulateHalfLife()">⚛️ Decay</button>
+                    <button id="resetBtn" class="btn-reset hidden" onclick="reset()">🔄 Reset</button>
+                </div>
+            </div>
+            <div class="panel">
+                <h2>📊 Data Table</h2>
+                <div class="stats">
+                    <div class="stat-box">
+                        <div class="stat-value amber" id="halfLifeCount">0</div>
+                        <div class="stat-label">Half-Lives</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value blue" id="parentDisplay">0</div>
+                        <div class="stat-label">Parent Remaining</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value green" id="percentDisplay">0%</div>
+                        <div class="stat-label">% Parent</div>
+                    </div>
+                </div>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Half-Life</th>
+                                <th>Parent</th>
+                                <th>Daughter</th>
+                                <th>% Parent</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTable">
+                            <tr><td colspan="4" style="text-align: center; color: #64748b; padding: 8px;">No data yet - start the simulation!</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let atoms = [];
+        let halfLives = 0;
+        let history = [];
+
+        function initializeAtoms() {
+            atoms = [];
+            for (let i = 0; i < 200; i++) {
+                atoms.push({ id: i, isParent: true, x: (i % 15) * 6.5 + 3, y: Math.floor(i / 15) * 6.5 + 3 });
+            }
+            halfLives = 0;
+            history = [{ halfLife: 0, parent: 200, daughter: 0, percentParent: 100, percentDaughter: 0 }];
+            renderAtoms(); updateDisplay(); updateTable();
+            document.getElementById('startBtn').classList.add('hidden');
+            document.getElementById('decayBtn').classList.remove('hidden');
+            document.getElementById('resetBtn').classList.remove('hidden');
+        }
+
+        function simulateHalfLife() {
+            atoms = atoms.map(atom => {
+                if (atom.isParent && Math.random() < 0.5) return { ...atom, isParent: false };
+                return atom;
+            });
+            halfLives++;
+            const parentCount = atoms.filter(a => a.isParent).length;
+            const daughterCount = atoms.filter(a => !a.isParent).length;
+            const percentParent = Math.round((parentCount / 200) * 1000) / 10;
+            const percentDaughter = Math.round((daughterCount / 200) * 1000) / 10;
+            history.push({ halfLife: halfLives, parent: parentCount, daughter: daughterCount, percentParent: percentParent, percentDaughter: percentDaughter });
+            renderAtoms(); updateDisplay(); updateTable();
+            if (parentCount === 0) document.getElementById('decayBtn').disabled = true;
+        }
+
+        function renderAtoms() {
+            const svg = document.getElementById('atomChamber');
+            svg.innerHTML = '';
+            atoms.forEach(atom => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', atom.x);
+                circle.setAttribute('cy', atom.y);
+                circle.setAttribute('r', '3');
+                circle.setAttribute('fill', atom.isParent ? '#60a5fa' : '#fbbf24');
+                svg.appendChild(circle);
+            });
+        }
+
+        function updateDisplay() {
+            const parentCount = atoms.filter(a => a.isParent).length;
+            const daughterCount = atoms.filter(a => !a.isParent).length;
+            const percentParent = atoms.length > 0 ? Math.round((parentCount / 200) * 1000) / 10 : 0;
+            document.getElementById('halfLifeCount').textContent = halfLives;
+            document.getElementById('parentCount').textContent = parentCount;
+            document.getElementById('daughterCount').textContent = daughterCount;
+            document.getElementById('parentDisplay').textContent = parentCount;
+            document.getElementById('percentDisplay').textContent = percentParent + '%';
+        }
+
+        function updateTable() {
+            const tbody = document.getElementById('historyTable');
+            tbody.innerHTML = '';
+            history.forEach((row) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td>' + row.halfLife + '</td><td class="td-blue">' + row.parent + '</td><td class="td-gold">' + row.daughter + '</td><td class="td-green">' + row.percentParent + '%</td>';
+                tbody.appendChild(tr);
+            });
+        }
+
+        function reset() {
+            atoms = []; halfLives = 0; history = [];
+            document.getElementById('atomChamber').innerHTML = '<text x="50" y="50" text-anchor="middle" fill="#64748b" font-size="6">Click "Start" to add atoms</text>';
+            document.getElementById('historyTable').innerHTML = '<tr><td colspan="4" style="text-align: center; color: #64748b; padding: 8px;">No data yet - start the simulation!</td></tr>';
+            document.getElementById('halfLifeCount').textContent = '0';
+            document.getElementById('parentCount').textContent = '0';
+            document.getElementById('daughterCount').textContent = '0';
+            document.getElementById('parentDisplay').textContent = '0';
+            document.getElementById('percentDisplay').textContent = '0%';
+            document.getElementById('startBtn').classList.remove('hidden');
+            document.getElementById('decayBtn').classList.add('hidden');
+            document.getElementById('decayBtn').disabled = false;
+            document.getElementById('resetBtn').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
